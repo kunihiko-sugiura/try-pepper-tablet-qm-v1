@@ -1,0 +1,79 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<style type="text/css">
+* {
+	font-size: 50px;
+	margin-top: 50px; 
+}
+#log_message {
+	overflow-y: scroll;
+	height: 500px;
+}
+</style>
+
+<script src="lib/jquery/jquery.min.js"></script>
+<script src="libs/qimessaging/1.0/qimessaging.js"></script>
+<script type="text/javascript">
+$(function(){
+	var qiSession = null;
+	var aLMemory = null;
+
+	var MEM_KEY_P2T = "MyApp/Pepper2Tablet";
+	var MEM_KEY_T2P = "MyApp/Tablet2Pepper";
+	var MEM_KEY_TABLOG = "MyApp/TabletLog";
+
+	function subscribeALMemory(alM) {
+		alM.subscriber( MEM_KEY_P2T ).done(function(subscriber) {
+            subscriber.signal.connect(
+            	function(result){
+            		logElm(result);
+            	});
+        	});
+	}
+
+	$("#btnInit").on( "click", function(){
+		qiSession = new QiSession( $("#pepperIP").val() );
+		qiSession.socket().on('connect', function(){
+		qiSession.service( "ALMemory" ).done( function(alM){
+				aLMemory = alM;
+				subscribeALMemory(alM);
+
+				logTab2Pepper("初期化したよ");
+
+			}).fail(function(err){
+				console.log(err);
+			});
+			logElm('pepper:connected');
+
+		}).on('disconnect', function(){
+			logElm('pepper:disconnected');
+		});
+	});
+	$("#btnSay").on( "click", function(){
+		aLMemory.raiseEvent( MEM_KEY_T2P, JSON.stringify({ "Tablet2Pepper": 1 }) );
+
+		logTab2Pepper("Clickしたよ");
+
+	});
+	function logTab2Pepper( obj ) {
+		console.log(obj);
+		logElm(logTxt);
+		var logTxt = JSON.stringify(obj);
+		aLMemory.raiseEvent( MEM_KEY_TABLOG, logTxt);
+	}
+	function logElm( logTxt ) {
+		$("#log_message").text(logTxt);
+	}	
+});
+</script>
+</head>
+<body>
+	<input type="text" id="pepperIP" value="192.168.0.6"/><br>
+	<input type="button" id="btnInit" value="初期化"/><br>
+	<input type="button" id="btnSay" value="TabletからPepperのイベントを発生"/><br>
+	<div id="log_message">未初期化</div>
+</body>
+</html>
